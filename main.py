@@ -18,7 +18,7 @@ while True:
     time.sleep(2)
     new_height = driver.execute_script('return document.body.scrollHeight')
     try:
-        driver.find_element_by_xpath('//*[@id="islmp"]/div/div/div/div/div[5]/input').click()
+        driver.find_element_by_xpath('//*[@id="islmp"]/div/div/div/div/div[5]/input').click()it
         time.sleep(2)
     except:
         pass
