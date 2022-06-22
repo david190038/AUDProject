@@ -1,74 +1,96 @@
-import os
-import requests
-from bs4 import BeautifulSoup
+import destination as destination
+from django.contrib.sessions.backends import file
+from selenium import webdriver
+from selenium.common import NoSuchElementException
+from selenium.webdriver.common.keys import Keys
+import time
 from PIL import Image
-import requests
-from PIL import Image
-from io import BytesIO
 
-# Maximum 20 Bilder, da mehr gesperrt sind
+# selenium 3
+from webdriver_manager.chrome import ChromeDriverManager
 
-GOOGLE_IMAGE = \
-    "https://www.google.com/search?site=&tbm=isch&source=hp&biw=1873&bih=990&"
+global _URL
+global _word
+global _path
+global _n_images
+global _filename
 
-
-def main():
-    global SAVE_FOLDER
-    global _inp
-    global RESIZED_FOLDER
-    global _newimage
-    global _filename
-
-    SAVE_FOLDER = str(input('Please specify a path for the original images: '))
-    RESIZED_FOLDER = str(input('Please specify a path for the resized images: '))
-
-    if not os.path.exists(SAVE_FOLDER):
-        os.mkdir(SAVE_FOLDER)
-    if not os.path.exists(RESIZED_FOLDER):
-        os.mkdir(RESIZED_FOLDER)
-
-    _inp = input('What are you looking for?')
-    _filename = str(input('How should the file be named? '))
-    n_images = int(input('How many images do you want? '))
-
-    searchurl = GOOGLE_IMAGE + "q=" + _inp
-    data = getdata(searchurl)
-    download_images(data, n_images)
+_word = str(input('Wort: '))
+#_word = 'auto'
+_n_images = int(input('Number of Images: '))
+#_n_images = 20
+#_path = str(input('Temp Ordner:' ))
+print('Temporären Pfad im Programm ändern!')
+_path = 'D:/Vucak1Duranovic2Mayer3'
+#RESIZED_FOLDER = str(input('Pfad für die optimierten Bilder: '))
+print('Final Ordner im Programm Ändern')
+RESIZED_FOLDER = 'D:/test'
+_filename = str(input('Name vom File: '))
+#_filename = 'ClassOne'
 
 
-def download_images(data, n_images: int):
-    soup = BeautifulSoup(data, 'html.parser')
-    imageAttributes = soup.find_all('img')
-    imageAttributes = imageAttributes[0:n_images + 1]
+URL = 'https://www.google.com/search?site=&tbm=isch&source=hp&q='
+driver = webdriver.Chrome(ChromeDriverManager().install())
+driver.fullscreen_window()
 
-    for item in imageAttributes:
-        print(item['src'])
+##driver.get('https://www.google.com/search?q=giraffe')
+driver.get(URL + _word)
 
-    imagelinks = []
-    for imageAttribute in imageAttributes:
-        imagelinks.append(imageAttribute['src'])  # filtering urls from the ResultSet.
+time.sleep(2)
+driver.fullscreen_window()
 
-    imagelinks.pop(0)  # First Entry does not include a valid URL! Deleting it with the method Pop
+## coockies
+try:
+    cookies_btn = driver.find_element_by_id('L2AGLb')
+    cookies_btn.click()
+except NoSuchElementException:  #spelling error making this code not work as expected
+    pass
 
-    for i, imagelink in enumerate(imagelinks):
-        # open image link and save as file
-        response = requests.get(imagelink)
+time.sleep(2)
+driver.fullscreen_window()
 
-        imagename = SAVE_FOLDER + '/' + _filename + str(i + 1) + '.jpg'
-        with open(imagename, 'wb') as file:
-            file.write(response.content)
-        with Image.open(imagename) as image:
-            width, height = image.size
-            if height == width or (height <= width / 2 or width <= height / 2):
-                newsize = (500, 500)
-                _newimage = image.resize(newsize)
-                _newimage.save(RESIZED_FOLDER + '/' + _filename + str(i + 1) + '.jpg', quality=100, optimize=True)
+try:
+    #Will keep scrolling down the webpage until it cannot scroll no more
+    last_height = driver.execute_script('return document.body.scrollHeight')
 
+    first_time = True
+    while True:
+        driver.execute_script('window.scrollTo(0,document.body.scrollHeight)')
+        time.sleep(2)
+        new_height = driver.execute_script('return document.body.scrollHeight')
+        try:
+            driver.find_element_by_xpath('//*[@id="islmp"]/div/div/div/div/div[5]/input').click()
+            time.sleep(2)
+        except:
+            pass
+        if new_height == last_height:
+            ## end reached - last input is show more results cock
 
+            all_inputs = driver.find_elements_by_tag_name("input")
+            all_inputs.pop().click()
 
-def getdata(url):
-    r = requests.get(url)
-    return r.text
+            time.sleep(3)
+            if not first_time:
+                break
+            first_time = False
 
+        last_height = new_height
 
-main()
+except Exception:  #everything bc smart
+    pass
+
+for i in range(1, _n_images+9):
+    try:
+        driver.find_element_by_xpath('//*[@id="islrg"]/div[1]/div['+str(i)+']/a[1]/div[1]/img').screenshot(_path + '/' + _filename+str(i)+'.jpg')
+    except:
+        pass
+
+for count in range(9, _n_images):
+    try:
+        image = Image.open(_path + '/' + _filename+str(count)+'.jpg')
+        if (image.width < image.height * 6):
+            rgb_im = image.convert('RGB')
+            rgb_im = rgb_im.resize((int(500), int(500)), Image.ANTIALIAS)
+            rgb_im.save(RESIZED_FOLDER + "/" + _filename + str(count-9) + '.jpg')
+    except:
+        pass
